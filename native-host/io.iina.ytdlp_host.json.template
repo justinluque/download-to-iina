@@ -1,0 +1,7 @@
+{
+  "name": "io.iina.ytdlp_host",
+  "description": "Downloads media via yt-dlp and opens it in IINA",
+  "path": "__HOST_SCRIPT_PATH__",
+  "type": "stdio",
+  "allowed_extensions": ["open_in_iina_ytdlp@iina.io"]
+}
