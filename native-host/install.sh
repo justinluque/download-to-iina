@@ -1,21 +1,38 @@
 #!/bin/bash
-# Installs the native messaging host manifest for Firefox on macOS.
+# Install a standalone native messaging helper for Firefox on macOS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOST_SCRIPT="$SCRIPT_DIR/iina_ytdlp_host.py"
-MANIFEST_DIR="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts"
-MANIFEST_PATH="$MANIFEST_DIR/io.iina.ytdlp_host.json"
+PYTHON_BIN="$(command -v python3 || true)"
+if [ -z "$PYTHON_BIN" ]; then
+  echo "Python 3 is required. Install it with: brew install python" >&2
+  exit 1
+fi
 
-chmod +x "$HOST_SCRIPT"
+"$PYTHON_BIN" - "$SCRIPT_DIR" <<'PY'
+import json
+from pathlib import Path
+import shlex
+import shutil
+import sys
 
-mkdir -p "$MANIFEST_DIR"
-sed "s#__HOST_SCRIPT_PATH__#$HOST_SCRIPT#" "$SCRIPT_DIR/io.iina.ytdlp_host.json.template" > "$MANIFEST_PATH"
-
-echo "Installed native messaging host manifest:"
-echo "  $MANIFEST_PATH"
-echo "Pointing at:"
-echo "  $HOST_SCRIPT"
-echo
-echo "Now load the extension in Firefox: about:debugging -> This Firefox ->"
-echo "Load Temporary Add-on -> select extension/manifest.json"
+source = Path(sys.argv[1])
+manifest_dir = Path.home() / "Library/Application Support/Mozilla/NativeMessagingHosts"
+host_dir = manifest_dir / "io.iina.ytdlp_host"
+host_dir.mkdir(parents=True, exist_ok=True)
+host_script = host_dir / "iina_ytdlp_host.py"
+shutil.copy2(source / "iina_ytdlp_host.py", host_script)
+launcher = host_dir / "launch.sh"
+launcher.write_text(
+    "#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+    + shlex.quote(str(host_script)) + "\n"
+)
+launcher.chmod(0o755)
+manifest = json.loads((source / "io.iina.ytdlp_host.json.template").read_text())
+manifest["path"] = str(launcher)
+manifest_path = manifest_dir / "io.iina.ytdlp_host.json"
+manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+print(f"Installed native messaging helper: {manifest_path}")
+print("Install the Firefox add-on:")
+print("https://addons.mozilla.org/en-US/firefox/addon/download-open-in-iina-yt-dlp/")
+PY

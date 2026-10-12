@@ -14,6 +14,7 @@ import struct
 import subprocess
 import sys
 import threading
+from urllib.parse import urlsplit
 
 DOWNLOAD_DIR = os.path.expanduser("~/Downloads")
 
@@ -48,9 +49,18 @@ def read_message():
     raw_length = sys.stdin.buffer.read(4)
     if len(raw_length) == 0:
         sys.exit(0)
+    if len(raw_length) != 4:
+        raise ValueError("Incomplete native message header.")
     length = struct.unpack("=I", raw_length)[0]
-    message = sys.stdin.buffer.read(length).decode("utf-8")
-    return json.loads(message)
+    if not 0 < length <= 1024 * 1024:
+        raise ValueError("Invalid native message length.")
+    raw_message = sys.stdin.buffer.read(length)
+    if len(raw_message) != length:
+        raise ValueError("Incomplete native message body.")
+    message = json.loads(raw_message.decode("utf-8"))
+    if not isinstance(message, dict):
+        raise ValueError("Native message must be an object.")
+    return message
 
 
 _send_lock = threading.Lock()
@@ -65,6 +75,15 @@ def send_message(message_dict):
 
 
 def download_and_open(url):
+    try:
+        parsed = urlsplit(url) if isinstance(url, str) else None
+        valid = parsed and parsed.scheme in ("http", "https") and parsed.hostname
+    except ValueError:
+        valid = False
+    if not valid:
+        send_message({"status": "error", "message": "Choose an HTTP or HTTPS media URL."})
+        return
+
     yt_dlp = find_yt_dlp()
     if not yt_dlp:
         send_message({
@@ -84,6 +103,7 @@ def download_and_open(url):
                 "-o", os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s"),
                 "--no-simulate",
                 "--print", "after_move:filepath",
+                "--",
                 url,
             ],
             capture_output=True,
@@ -118,7 +138,11 @@ def download_and_open(url):
 
 def main():
     while True:
-        message = read_message()
+        try:
+            message = read_message()
+        except (ValueError, UnicodeError) as exc:
+            send_message({"status": "error", "message": str(exc)})
+            return
         url = message.get("url")
         if not url:
             send_message({"status": "error", "message": "No url in message."})

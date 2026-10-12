@@ -4,19 +4,28 @@
     "gecko": {
       "id": "open_in_iina_ytdlp@iina.io",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   },
   "name": "Download & Open in IINA (yt-dlp)",
   "description": "Downloads video/audio with yt-dlp to ~/Downloads, then opens the file in IINA.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "persistent": true
   },
   "browser_action": {
-    "default_icon": "icon.png",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
     "default_title": "Download & Open in IINA"
   },
   "permissions": [
@@ -27,7 +36,9 @@
   ],
   "icons": {
     "16": "icon16.png",
+    "32": "icon32.png",
     "48": "icon48.png",
     "128": "icon128.png"
-  }
+  },
+  "homepage_url": "https://github.com/justinluque/iina-ytdlp-extension"
 }

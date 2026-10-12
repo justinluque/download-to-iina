@@ -1,59 +1,85 @@
 # Download & Open in IINA (yt-dlp)
 
-Fork of the "Open In IINA" Firefox extension that, instead of streaming the
-URL directly to IINA, downloads it with `yt-dlp` into `~/Downloads` first and
-then opens the downloaded file in IINA.
+<img src="extension/icon128.png" width="96" height="96" alt="Download & Open in IINA icon">
 
-Browser extensions can't shell out to a local binary on their own, so this
-needs a small **native messaging host** — a Python script Firefox launches
-and talks to over stdin/stdout — that runs `yt-dlp` and then `open -a IINA`.
+A small Firefox extension for macOS. Click the toolbar button or right-click a
+page, link, video, or audio URL to download it with yt-dlp into `~/Downloads`,
+then open the downloaded file in IINA.
 
-## Requirements
+[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/download-open-in-iina-yt-dlp/)
 
-- `yt-dlp` installed (`brew install yt-dlp`)
-- IINA installed
-- Firefox
-- Python 3 (ships with macOS / usually already present)
+This is a casual source release. It grew out of the “Open In IINA” extension;
+this version downloads first instead of streaming. Issues and small fixes are welcome.
 
-## Install
+## Setup
 
-1. Run the installer, which registers the native messaging host:
+You'll need Firefox, [IINA](https://iina.io), Python 3, and yt-dlp.
+If you use Homebrew:
 
-   ```bash
-   ./native-host/install.sh
-   ```
+```sh
+brew install python yt-dlp ffmpeg
+```
 
-   This writes
-   `~/Library/Application Support/Mozilla/NativeMessagingHosts/io.iina.ytdlp_host.json`
-   pointing at `native-host/iina_ytdlp_host.py`.
+Firefox needs a local native messaging helper to run yt-dlp. Installing the
+Firefox add-on alone isn't enough:
 
-2. Load the extension in Firefox:
-   - Go to `about:debugging#/runtime/this-firefox`
-   - Click **Load Temporary Add-on…**
-   - Select `extension/manifest.json`
+```sh
+git clone https://github.com/justinluque/iina-ytdlp-extension.git
+cd iina-ytdlp-extension
+bash native-host/install.sh
+```
 
-   (Temporary add-ons are removed when Firefox restarts — reload it each
-   session, or self-sign it via `web-ext sign` / AMO for a permanent install.)
+The installer copies the helper into Firefox's native messaging directory and
+records your Python interpreter's absolute path, so Firefox launched from the
+Dock can find it. You can move or remove the checkout afterward. Run the
+installer again after updating the helper or moving your Python installation.
 
-3. Click the toolbar icon on a page, or right-click a video/audio/link and
-   choose "Download this ... (yt-dlp) & open in IINA". The toolbar badge
-   shows `…` while downloading, `✓` when IINA has opened the file, or `!` on
-   error (check the background page console via `about:debugging` → Inspect
-   for the error message).
+Install the add-on from the Firefox link above, then click its toolbar button
+on a media page, or choose **Download this … (yt-dlp) & open in IINA** from the
+right-click menu. The badge shows `…` while downloading, `✓` on success, and
+`!` on an error. Downloads finish before playback starts.
 
-## Notes / gotchas
+## Development / packaging
 
-- **PATH**: Firefox launched from Finder/Dock doesn't inherit your shell's
-  PATH, so `yt-dlp` on PATH in Terminal may not be visible to the native
-  host. `iina_ytdlp_host.py` falls back to common locations
-  (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`) — edit
-  `CANDIDATE_YTDLP_PATHS` in that file if yours lives elsewhere.
-- Downloads use yt-dlp's own extractors, so this works on any site yt-dlp
-  supports (not just direct media URLs) — the extension sends whatever URL
-  you clicked (page/link/video/audio) straight to yt-dlp.
-- The whole download runs before IINA opens anything — for long videos
-  there's no "start playback immediately" streaming behavior anymore, by
-  design.
-- Uninstall: remove the native host manifest at
-  `~/Library/Application Support/Mozilla/NativeMessagingHosts/io.iina.ytdlp_host.json`
-  and remove the temporary add-on in `about:debugging`.
+For local testing, visit `about:debugging#/runtime/this-firefox`, choose
+**Load Temporary Add-on…**, and select `extension/manifest.json`.
+Temporary add-ons disappear when Firefox restarts.
+
+```sh
+python3 -m unittest discover -s tests
+python3 scripts/package.py
+```
+
+The packaging command creates an unsigned XPI in `dist/`. Submit it to Mozilla
+for signing before distributing it as a permanent Firefox installation.
+The GitHub source may be newer than the signed version on Firefox Add-ons.
+
+## Troubleshooting
+
+- **Nothing happens / `!` badge:** check that the helper is installed and
+  IINA is available. Inspect the extension console through `about:debugging`
+  for details.
+- **yt-dlp missing:** the helper searches PATH, `/opt/homebrew/bin`,
+  `/usr/local/bin`, and common user Python locations. For a custom install,
+  edit `CANDIDATE_YTDLP_PATHS` in the helper and rerun the installer.
+- **A site stops working:** update yt-dlp (`brew upgrade yt-dlp`). This uses
+  yt-dlp's extractors and does not guarantee support for every media URL.
+- Only HTTP and HTTPS URLs are accepted. It does not pass Firefox cookies or
+  login sessions to yt-dlp. Playlists follow yt-dlp's defaults; the helper
+  opens the last reported file.
+
+## Privacy
+
+No analytics or telemetry. The extension sends the URL you select to the local
+helper, and yt-dlp contacts the media site to download it. Files stay in
+`~/Downloads`. See [PRIVACY.md](PRIVACY.md).
+
+## Uninstall
+
+Remove the add-on in Firefox, then delete
+`~/Library/Application Support/Mozilla/NativeMessagingHosts/io.iina.ytdlp_host.json`
+and the adjacent `io.iina.ytdlp_host` directory. Downloaded media is kept.
+
+## License
+
+[GNU AGPL v3.0 only](LICENSE), matching the license on the Firefox Add-ons listing.
