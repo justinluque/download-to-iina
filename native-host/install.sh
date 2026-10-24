@@ -34,5 +34,5 @@ manifest_path = manifest_dir / "io.iina.ytdlp_host.json"
 manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 print(f"Installed native messaging helper: {manifest_path}")
 print("Install the Firefox add-on:")
-print("https://addons.mozilla.org/en-US/firefox/addon/download-open-in-iina-yt-dlp/")
+print("https://addons.mozilla.org/en-US/firefox/addon/download-to-iina/")
 PY

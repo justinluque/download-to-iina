@@ -6,7 +6,7 @@ Download video or audio into `~/Downloads`, follow its progress in Firefox,
 then play the completed file in [IINA](https://iina.io).
 Free and open source. No accounts, analytics, or telemetry.
 
-[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/download-open-in-iina-yt-dlp/)
+[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/download-to-iina/)
 
 ## Features
 
