@@ -156,3 +156,7 @@ yt-dlp are separate projects. The current play/download vector icon was created
 for this extension. Existing repository history and licensing are retained.
 
 [GNU AGPL v3.0 only](LICENSE), matching the Firefox Add-ons listing.
+
+## Support this project
+
+Enjoying Download to IINA? You can [buy me a coffee](https://buymeacoffee.com/justinluque) to support development and maintenance of this free, open-source extension. Donations are entirely optional.
