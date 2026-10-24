@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 — 2026-10-24
+
+- Move the GitHub repository to justinluque/download-to-iina.
+- Update the extension homepage, help link, and setup instructions.
+- Remove the unused original raster icon source.
+
 ## 1.2.1 — 2026-10-24
 
 - Rename the extension to Download to IINA.

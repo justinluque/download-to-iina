@@ -93,7 +93,7 @@ test('failure has retry and dismiss controls without a failed-download history l
 test('opening progress on a non-media web page does not enqueue that page', async () => {
   const s = setup();
   await openPanel(s, media);
-  const panel = await openPanel(s, {id: 2, url: 'https://github.com/justinluque/iina-ytdlp-extension'}, false);
+  const panel = await openPanel(s, {id: 2, url: 'https://github.com/justinluque/download-to-iina'}, false);
   assert.equal(s.sent.length, 1);
   assert.equal((await s.jobs()).length, 1);
   assert.equal(panel.nodes.jobs.children.length, 1);

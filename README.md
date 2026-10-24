@@ -36,8 +36,8 @@ Firefox needs a local native messaging helper to run yt-dlp. The add-on alone
 cannot download files:
 
 ```sh
-git clone https://github.com/justinluque/iina-ytdlp-extension.git
-cd iina-ytdlp-extension
+git clone https://github.com/justinluque/download-to-iina.git
+cd download-to-iina
 bash native-host/install.sh
 ```
 
