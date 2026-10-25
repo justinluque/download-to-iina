@@ -12,8 +12,8 @@ class Element {
   setAttribute(name, value) { this.attributes[name] = value; }
   focus() {}
 }
-async function openPanel(s, tab, hasMedia = true) {
-  const nodes = Object.fromEntries(['jobs', 'notice', 'empty', 'error'].map(id => [id, new Element('div')]));
+async function openPanel(s, tab, hasMedia = true, player = null) {
+  const nodes = Object.fromEntries(['jobs', 'notice', 'empty', 'error', 'preferences'].map(id => [id, new Element('div')]));
   const requests = [];
   const document = {
     activeElement: null,
@@ -24,8 +24,15 @@ async function openPanel(s, tab, hasMedia = true) {
   await vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../extension/popup.js'), 'utf8'), {
     document, URL,
     browser: {
-      tabs: { query: async () => tab ? [tab] : [], executeScript: async () => [hasMedia] },
+      storage: s.browser.storage,
+      tabs: {
+        query: async () => tab ? [tab] : [],
+        executeScript: async (id, { code }) => [vm.runInNewContext(code, {
+          document: { querySelector: selector => selector === 'video' ? player : hasMedia },
+        })],
+      },
       runtime: {
+        openOptionsPage: s.browser.runtime.openOptionsPage,
         onMessage: { addListener(fn) { s.subscribers.push(fn); } },
         async sendMessage(message) { requests.push(message); return s.ui(message); },
       },
@@ -34,6 +41,32 @@ async function openPanel(s, tab, hasMedia = true) {
   return { nodes, requests };
 }
 const media = { url: 'https://www.youtube.com/watch?v=example', title: 'Example video' };
+test('disabling seek starts from the beginning without reading the player position', async () => {
+  const s = setup({ seekToCurrentPosition: false });
+  let reads = 0;
+  await openPanel(s, media, true, { get currentTime() { reads++; return 93.125; } });
+  assert.equal(reads, 0);
+  assert.equal(s.sent[0].start, null);
+});
+test('popup preferences button opens the extension options page', async () => {
+  const s = setup();
+  const panel = await openPanel(s, { url: 'about:blank' });
+  await panel.nodes.preferences.onclick();
+  assert.equal(s.listeners.optionsOpened, true);
+});
+test('current video position reaches the helper and survives retry', async () => {
+  const s = setup();
+  await openPanel(s, media, true, { currentTime: 93.125 });
+  assert.equal(s.sent[0].start, 93.125);
+  s.listeners.native({ id: '1', status: 'error', message: 'Try again' });
+  await s.ui({ type: 'retry' });
+  assert.equal(s.sent[1].start, 93.125);
+});
+test('URL timestamps are ignored when no player position is available', async () => {
+  const s = setup();
+  await openPanel(s, { ...media, url: media.url + '&t=90' });
+  assert.equal(s.sent[0].start, null);
+});
 test('opening the toolbar panel starts the download without another click', async () => {
   const s = setup();
   const panel = await openPanel(s, media);

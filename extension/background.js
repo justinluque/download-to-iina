@@ -35,7 +35,7 @@ function pump() {
   job.phase = "Preparing…";
   try {
     if (!nativePort) connect();
-    nativePort.postMessage({ id: job.id, url: job.url });
+    nativePort.postMessage({ id: job.id, url: job.url, start: job.start });
   } catch (error) {
     removeJob(job);
     setNotice({ kind: "error", url: job.url, title: job.title,
@@ -64,7 +64,7 @@ function connect() {
     } else if (["done", "error", "cancelled"].includes(message.status)) {
       removeJob(job);
       if (message.status === "error") {
-        setNotice({ kind: "error", url: job.url, title: job.title, message: message.message || "Download failed. Try again." });
+        setNotice({ kind: "error", url: job.url, title: job.title, start: job.start, message: message.message || "Download failed. Try again." });
       } else if (notice?.kind !== "error") {
         setNotice({ kind: message.status === "done" ? "success" : "info", message: message.status === "done" ? "Opened in IINA" : "Cancelled" });
       }
@@ -79,21 +79,21 @@ function connect() {
     const job = jobs.find(item => item.status === "active");
     if (job) {
       const waiting = jobs.length - 1;
-      setNotice({ kind: "error", url: job.url, title: job.title,
+      setNotice({ kind: "error", url: job.url, title: job.title, start: job.start,
         message: `The helper disconnected. Run native-host/install.sh and restart Firefox, then retry. ${error?.message || ""}${waiting ? ` ${waiting} queued request(s) also stopped.` : ""}`.trim() });
       jobs.length = 0;
     }
     publish();
   });
 }
-function downloadAndOpen(url, title) {
+function downloadAndOpen(url, title, start) {
   let parsed;
   try { parsed = new URL(url); } catch { throw new Error("Open an HTTP or HTTPS video page first."); }
   if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Open an HTTP or HTTPS video page first.");
   if (jobs.some(job => job.url === url)) return;
   if (jobs.length >= 20) throw new Error("The queue is full. Wait for a download to finish.");
   setNotice(null);
-  jobs.push({ id: String(++nextId), url, title: title || parsed.hostname, status: "queued", phase: "Queued", percent: null });
+  jobs.push({ id: String(++nextId), url, title: title || parsed.hostname, start: Number.isFinite(start) && start > 0 ? start : null, status: "queued", phase: "Queued", percent: null });
   pump();
   publish();
 }
@@ -113,10 +113,10 @@ function cancelJob(id) {
 browser.runtime.onMessage.addListener(message => {
   try {
     if (message.type === "getState") return Promise.resolve(snapshot());
-    if (message.type === "download") downloadAndOpen(message.url, message.title);
+    if (message.type === "download") downloadAndOpen(message.url, message.title, message.start);
     else if (message.type === "cancel") cancelJob(message.id);
     else if (message.type === "retry") {
-      if (notice?.kind === "error" && notice.url) downloadAndOpen(notice.url, notice.title);
+      if (notice?.kind === "error" && notice.url) downloadAndOpen(notice.url, notice.title, notice.start);
     } else if (message.type === "dismiss") { setNotice(null); publish(); }
     else return undefined;
     return Promise.resolve(snapshot());

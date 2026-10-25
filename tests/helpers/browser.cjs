@@ -1,7 +1,8 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-function setup() {
+function setup(initialSettings = {}) {
+  const settings = { ...initialSettings };
   const listeners = {};
   const subscribers = [];
   const sent = [];
@@ -15,10 +16,15 @@ function setup() {
   };
   const browser = {
     runtime: {
+      async openOptionsPage() { listeners.optionsOpened = true; },
       connectNative() { return connection; },
       onMessage: { addListener(fn) { listeners.ui = fn; } },
       sendMessage(message) { for (const fn of subscribers) fn(message); return Promise.resolve(); },
     },
+    storage: { local: {
+      async get(defaults) { return { ...defaults, ...settings }; },
+      async set(values) { Object.assign(settings, values); },
+    } },
     browserAction: { setBadgeText({ text }) { badges.push(text); }, setBadgeBackgroundColor() {}, setTitle() {} },
     contextMenus: { create() {}, onClicked: { addListener(fn) { listeners.context = fn; } } },
   };

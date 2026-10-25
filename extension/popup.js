@@ -97,8 +97,18 @@ async function isMediaPage(tab) {
     return found === true;
   } catch { return false; }
 }
+async function currentPlayerTime(tab) {
+  try {
+    const [time] = await browser.tabs.executeScript(tab.id, {
+      code: `(() => { const video = document.querySelector('video'); return video && Number.isFinite(video.currentTime) ? video.currentTime : null; })()`,
+    });
+    return Number.isFinite(time) && time > 0 ? time : null;
+  } catch { return null; }
+}
 // Opening the toolbar popup is the download action. Background deduplication
 // makes reopening it safe while the same URL is already downloading or queued.
+$("preferences").onclick = () => browser.runtime.openOptionsPage()
+  .catch(() => showError("Could not open preferences. Try the extension's settings in Firefox."));
 browser.runtime.onMessage.addListener(message => { if (message.type === "state") render(message); });
 (async () => {
   try {
@@ -106,7 +116,9 @@ browser.runtime.onMessage.addListener(message => { if (message.type === "state")
     initialized = true;
     $("empty").hidden = true;
     if (tab && /^https?:\/\//i.test(tab.url || "") && await isMediaPage(tab)) {
-      await command({ type: "download", url: tab.url, title: tab.title });
+      const { seekToCurrentPosition } = await browser.storage.local.get({ seekToCurrentPosition: true });
+      const start = seekToCurrentPosition ? await currentPlayerTime(tab) : null;
+      await command({ type: "download", url: tab.url, title: tab.title, start });
     } else {
       await command({ type: "getState" });
     }

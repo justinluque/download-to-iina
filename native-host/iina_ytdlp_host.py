@@ -5,6 +5,7 @@ import glob
 import json
 import math
 import os
+from pathlib import Path
 import shutil
 import signal
 import struct
@@ -12,7 +13,7 @@ import subprocess
 import sys
 import threading
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 DOWNLOAD_DIR = os.path.expanduser("~/Downloads")
 CANDIDATE_YTDLP_PATHS = ["/opt/homebrew/bin/yt-dlp", "/usr/local/bin/yt-dlp",
@@ -98,7 +99,7 @@ def parse_event(line):
         return None
 
 
-def download_and_open(url, request_id=None, cancel=None):
+def download_and_open(url, request_id=None, cancel=None, start=None):
     cancel = cancel or threading.Event()
     def emit(status, **fields):
         message = {"status": status, **fields}
@@ -109,6 +110,7 @@ def download_and_open(url, request_id=None, cancel=None):
         parsed = urlsplit(url) if isinstance(url, str) else None
         if not (parsed and parsed.scheme in ("http", "https") and parsed.hostname):
             raise ValueError("Choose an HTTP or HTTPS media URL.")
+        start = number(start) if not isinstance(start, bool) else None
         yt_dlp = find_yt_dlp()
         if not yt_dlp:
             raise ValueError("yt-dlp was not found. Install it with brew install yt-dlp, then retry.")
@@ -184,7 +186,14 @@ def download_and_open(url, request_id=None, cancel=None):
             return
         emit("progress", phase="opening", percent=100)
         try:
-            subprocess.run(["open", "-a", "IINA", filepath], check=True, capture_output=True, timeout=15)
+            # Launch arguments are ignored when IINA is already running. A URL
+            # event delivers the file and position to both new and running apps.
+            # Always set start, including zero, because IINA may reuse a player
+            # core that still holds the previous file's start option.
+            query = urlencode({"url": Path(filepath).resolve().as_uri(),
+                               "new_window": "1", "mpv_start": f"{start or 0:.3f}"})
+            player_command = ["open", "-a", "IINA", "iina://open?" + query]
+            subprocess.run(player_command, check=True, capture_output=True, timeout=15)
         except (OSError, subprocess.SubprocessError) as exc:
             raise ValueError(f"Downloaded, but IINA could not open the file. Check that IINA is installed. File: {filepath}") from exc
         emit("done", path=filepath)
@@ -192,9 +201,9 @@ def download_and_open(url, request_id=None, cancel=None):
         emit("error", message=str(exc)[-2000:])
 
 
-def run_job(url, request_id, cancel):
+def run_job(url, request_id, cancel, start=None):
     try:
-        download_and_open(url, request_id, cancel)
+        download_and_open(url, request_id, cancel, start)
     finally:
         with _jobs_lock:
             _jobs.pop(request_id, None)
@@ -224,7 +233,7 @@ def main():
                     continue
                 cancel = threading.Event()
                 _jobs[request_id] = cancel
-            threading.Thread(target=run_job, args=(message.get("url"), request_id, cancel), daemon=True).start()
+                threading.Thread(target=run_job, args=(message.get("url"), request_id, cancel, message.get("start")), daemon=True).start()
     finally:
         with _jobs_lock:
             for cancel in _jobs.values():

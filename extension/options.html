@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Download to IINA — Preferences</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>Preferences</h1>
+    <p class="subtitle">Download to IINA</p>
+    <label class="setting">
+      <input id="seek" type="checkbox" disabled aria-describedby="seek-description">
+      <span>Start at the current video position</span>
+    </label>
+    <p id="seek-description">When you click the toolbar icon, remember where the page's video is playing and start IINA there. Turn this off to start from the beginning.</p>
+    <p id="status" role="status" aria-live="polite">Loading preferences…</p>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

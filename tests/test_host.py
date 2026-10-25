@@ -6,6 +6,7 @@ import struct
 import threading
 import unittest
 from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlsplit
 
 spec = importlib.util.spec_from_file_location("host", Path(__file__).resolve().parents[1] / "native-host/iina_ytdlp_host.py")
 host = importlib.util.module_from_spec(spec)
@@ -36,7 +37,7 @@ class NativeHostTests(unittest.TestCase):
                 self.assertEqual(send.call_args.args[0]["status"], "error")
                 launch.assert_not_called()
 
-    def run_download(self, events, code=0, cancel=None, open_error=None, exists=True):
+    def run_download(self, events, code=0, cancel=None, open_error=None, exists=True, start=None):
         lines = [host.PREFIX + json.dumps(event) + "\n" if isinstance(event, dict) else event + "\n" for event in events]
         process = Mock(stdout=iter(lines))
         process.wait.return_value = code
@@ -48,7 +49,7 @@ class NativeHostTests(unittest.TestCase):
                 patch.object(host.subprocess, "Popen", return_value=process) as launch, \
                 patch.object(host.subprocess, "run", side_effect=open_error) as player, \
                 patch.object(host, "send_message") as send:
-            host.download_and_open("https://example.com/video", "job-1", cancel)
+            host.download_and_open("https://example.com/video", "job-1", cancel, start)
             return [call.args[0] for call in send.call_args_list], launch.call_args.args[0], player
 
     def test_finds_homebrew_ffmpeg_without_shell_path(self):
@@ -81,7 +82,27 @@ class NativeHostTests(unittest.TestCase):
         self.assertEqual(messages[2]["eta"], 15)
         self.assertEqual(messages[3]["phase"], "processing")
         self.assertEqual(messages[-1], {"status": "done", "id": "job-1", "path": "/tmp/finished.mp4"})
-        self.assertEqual(player.call_args.args[0], ["open", "-a", "IINA", "/tmp/finished.mp4"])
+        self.assertEqual(player.call_args.args[0][:3], ["open", "-a", "IINA"])
+        opened = urlsplit(player.call_args.args[0][3])
+        self.assertEqual((opened.scheme, opened.netloc), ("iina", "open"))
+        self.assertEqual(parse_qs(opened.query), {
+            "url": [Path("/tmp/finished.mp4").resolve().as_uri()], "new_window": ["1"], "mpv_start": ["0.000"]})
+
+    def test_position_and_special_filename_reach_running_iina_as_a_url_event(self):
+        path = "/tmp/Video é & #1 [id].mp4"
+        _, _, player = self.run_download([{"kind": "file", "path": path}], start=93.125)
+        command = player.call_args.args[0]
+        self.assertNotIn("--args", command)
+        options = parse_qs(urlsplit(command[3]).query)
+        self.assertEqual(options["url"], [Path(path).resolve().as_uri()])
+        self.assertEqual(options["mpv_start"], ["93.125"])
+
+    def test_missing_or_invalid_position_clears_previous_start(self):
+        for start in (None, 0, -1, True, "90", float("nan"), float("inf")):
+            with self.subTest(start=start):
+                _, _, player = self.run_download([{"kind": "file", "path": "/tmp/a.mp4"}], start=start)
+                options = parse_qs(urlsplit(player.call_args.args[0][3]).query)
+                self.assertEqual(options["mpv_start"], ["0.000"])
 
     def test_unknown_sizes_and_nonfinite_numbers(self):
         messages, _, _ = self.run_download([{"kind": "progress", "downloaded": 1, "total": "NA", "speed": float("nan"), "eta": -1}, {"kind": "file", "path": "/tmp/a"}])

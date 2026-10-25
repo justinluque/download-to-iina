@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.3 — 2026-10-24
+
+- Capture the page video player's current position when the toolbar icon is clicked.
+- Open the downloaded file at that position even when IINA is already running.
+- Add a saved preference to enable or disable seeking to the page video's current position.
+- Add a Preferences button to the popup; seeking is enabled by default.
+- Use size-matched PNG icons for the Firefox toolbar and add-on listing.
+- Timestamp support requires reinstalling the native helper and restarting Firefox.
+
 ## 1.2.2 — 2026-10-24
 
 - Move the GitHub repository to justinluque/download-to-iina.

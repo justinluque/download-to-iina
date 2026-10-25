@@ -57,7 +57,18 @@ may lag behind this source checkout.
    progress panel opens in the same click.
 2. Close and reopen the panel at any time; the download continues in the background.
    Reopening the same active page does not start a duplicate download.
-3. When download and merging finish, IINA opens the completed file.
+3. When download and merging finish, IINA opens the completed file at the playback
+   position captured when you clicked the toolbar icon, when the page exposes a
+   video player (including YouTube).
+   Otherwise, playback starts at the beginning.
+
+Open **Preferences** from the popup (or the extension's settings in Firefox) to
+toggle **Start at the current video position**. It is enabled by default. Turning
+it off starts new downloads from the beginning in IINA. The preference is saved
+locally and changes apply to new downloads.
+
+After updating timestamp support, rerun `bash native-host/install.sh` and restart
+Firefox to replace the helper. Updating the XPI alone does not update the helper.
 
 The toolbar recognizes YouTube video routes, Vimeo video URLs, direct media
 URLs, and pages containing video/audio elements or video metadata. On other

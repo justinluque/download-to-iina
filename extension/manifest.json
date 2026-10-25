@@ -27,10 +27,16 @@
     "default_title": "Download to IINA",
     "default_popup": "popup.html"
   },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true,
+    "browser_style": false
+  },
   "permissions": [
     "activeTab",
     "contextMenus",
-    "nativeMessaging"
+    "nativeMessaging",
+    "storage"
   ],
   "icons": {
     "16": "icon16.png",
