@@ -12,7 +12,7 @@
   },
   "name": "Download to IINA",
   "description": "Downloads video/audio with yt-dlp to ~/Downloads, then opens the file in IINA.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "background": {
     "scripts": [
       "background.js"
